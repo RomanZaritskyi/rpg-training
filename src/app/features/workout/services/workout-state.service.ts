@@ -73,6 +73,13 @@ export class WorkoutStateService {
 		this.elapsedTime.update((t) => t + 1);
 	}
 
+	addElapsed(seconds: number): void {
+		if (seconds <= 0) {
+			return;
+		}
+		this.elapsedTime.update((t) => t + seconds);
+	}
+
 	reset(): void {
 		this.isActive.set(false);
 		this.isPaused.set(false);

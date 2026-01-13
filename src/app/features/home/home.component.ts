@@ -11,7 +11,7 @@ import { Card, ProgressBar, Icon, Button } from '../../shared';
   template: `
     <ui-card>
       <ng-container card-header>
-        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-6">
+        <div class="bg-linear-to-r from-purple-600 to-indigo-600 p-6">
           <div class="flex items-center gap-3 mb-2">
             <ui-icon name="trophy" size="xl" class="text-yellow-300" />
             <h1 class="text-white text-xl font-bold">RPG Fitness</h1>
@@ -20,7 +20,7 @@ import { Card, ProgressBar, Icon, Button } from '../../shared';
         </div>
       </ng-container>
 
-      <div class="p-6 space-y-6">
+      <div class="p-6 flex flex-col gap-6">
         <!-- Daily Quest -->
         <div class="bg-indigo-950/50 rounded-xl p-5 border border-indigo-500/30">
           <h2 class="text-purple-200 mb-3 font-semibold">Daily Quest</h2>
@@ -50,22 +50,9 @@ import { Card, ProgressBar, Icon, Button } from '../../shared';
         </div>
 
         <!-- Start Button -->
-        <ui-button
-          variant="success"
-          [fullWidth]="true"
-          size="lg"
-          (clicked)="startTraining()"
-        >
+        <ui-button variant="success" [fullWidth]="true" size="lg" (clicked)="startTraining()">
           Start Training
         </ui-button>
-
-        <!-- Streak -->
-        @if (progress().streak > 0) {
-          <div class="flex items-center justify-center gap-2 text-orange-300">
-            <ui-icon name="flame" size="md" />
-            <span>Streak: {{ progress().streak }} {{ progress().streak === 1 ? 'day' : 'days' }}</span>
-          </div>
-        }
       </div>
     </ui-card>
   `,

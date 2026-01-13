@@ -21,7 +21,7 @@ import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
   template: `
     <ui-card>
       <ng-container card-header>
-        <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6">
+        <div class="bg-linear-to-r from-green-600 to-emerald-600 p-6">
           <h1 class="text-white text-center text-xl font-bold mb-2">Workout in Progress</h1>
           <p class="text-green-100 text-center">
             Block {{ currentBlockIndex() + 1 }}/{{ blocks().length }}: {{ currentBlock().name }}
@@ -32,38 +32,39 @@ import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
       <div class="p-6 space-y-6">
         <!-- Round indicator for strength blocks -->
         @if (currentBlock().type === 'strength' && currentBlock().rounds) {
-          <div class="text-center">
-            <div class="inline-block bg-purple-600 rounded-full px-6 py-3">
-              <span class="text-white font-medium">
-                Round {{ currentRound() }} of {{ currentBlock().rounds }}
-              </span>
-            </div>
+        <div class="text-center">
+          <div class="inline-block bg-purple-600 rounded-full px-6 py-3">
+            <span class="text-white font-medium">
+              Round {{ currentRound() }} of {{ currentBlock().rounds }}
+            </span>
           </div>
+        </div>
         }
 
         <!-- Exercise List -->
-        <div class="bg-indigo-950/50 rounded-xl p-5 border border-indigo-500/30 min-h-[200px]">
+        <div class="bg-indigo-950/50 rounded-xl p-5 border border-indigo-500/30 min-h-50">
           @if (currentBlock().exercises) {
-            <div class="space-y-3">
-              @for (exercise of currentBlock().exercises; track exercise.name) {
-                <div class="flex items-center justify-between py-3 border-b border-indigo-500/20 last:border-b-0">
-                  <span class="text-white">{{ exercise.name }}</span>
-                  <span class="text-purple-300 font-medium">x {{ exercise.reps }}</span>
-                </div>
+          <div class="space-y-3">
+            @for (exercise of currentBlock().exercises; track exercise.name) {
+            <div
+              class="flex items-center justify-between py-3 border-b border-indigo-500/20 last:border-b-0"
+            >
+              <span class="text-white">{{ exercise.name }}</span>
+              <span class="text-purple-300 font-medium">x {{ exercise.reps }}</span>
+            </div>
+            }
+          </div>
+          } @else {
+          <div class="flex items-center justify-center h-full min-h-37.5">
+            <div class="text-center">
+              <p class="text-white text-lg mb-2">{{ currentBlock().name }}</p>
+              @if (currentBlock().duration) {
+              <p class="text-purple-300">{{ currentBlock().duration }}</p>
+              } @if (currentBlock().distance) {
+              <p class="text-purple-300">{{ currentBlock().distance }}</p>
               }
             </div>
-          } @else {
-            <div class="flex items-center justify-center h-full min-h-[150px]">
-              <div class="text-center">
-                <p class="text-white text-lg mb-2">{{ currentBlock().name }}</p>
-                @if (currentBlock().duration) {
-                  <p class="text-purple-300">{{ currentBlock().duration }}</p>
-                }
-                @if (currentBlock().distance) {
-                  <p class="text-purple-300">{{ currentBlock().distance }}</p>
-                }
-              </div>
-            </div>
+          </div>
           }
         </div>
 
@@ -77,30 +78,19 @@ import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
             />
             <span class="text-white text-2xl font-mono">{{ elapsedTime() | formatTime }}</span>
             @if (isPaused()) {
-              <span class="bg-orange-600 text-white text-sm px-3 py-1 rounded-full">
-                Paused
-              </span>
+            <span class="bg-orange-600 text-white text-sm px-3 py-1 rounded-full"> Paused </span>
             }
           </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex gap-3">
-          <ui-button
-            variant="success"
-            class="flex-1"
-            size="lg"
-            (clicked)="completeBlock()"
-          >
-            <ui-icon name="check-circle" size="sm" />
+        <div class="grid grid-flow-col grid-cols-[2fr_1fr] gap-2 items-stretch">
+          <ui-button variant="success" (clicked)="completeBlock()">
+            <ui-icon name="check-circle" />
             {{ buttonText() }}
           </ui-button>
-          <ui-button
-            [variant]="isPaused() ? 'success' : 'warning'"
-            size="lg"
-            (clicked)="togglePause()"
-          >
-            <ui-icon [name]="isPaused() ? 'play' : 'pause'" size="sm" />
+          <ui-button [variant]="isPaused() ? 'success' : 'warning'" (clicked)="togglePause()">
+            <ui-icon [name]="isPaused() ? 'play' : 'pause'" />
           </ui-button>
         </div>
       </div>
@@ -113,6 +103,16 @@ export class WorkoutActiveComponent implements OnDestroy {
   private readonly workoutStateService = inject(WorkoutStateService);
   private readonly trainingPlanService = inject(TrainingPlanService);
   private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private lastTickMs: number | null = null;
+
+  private readonly visibilityHandler = (): void => {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    if (document.visibilityState === 'visible' && !this.isPaused()) {
+      this.applyElapsedDelta();
+    }
+  };
 
   readonly blocks = this.trainingPlanService.blocks;
   readonly currentBlockIndex = this.workoutStateService.currentBlockIndex;
@@ -125,9 +125,7 @@ export class WorkoutActiveComponent implements OnDestroy {
   readonly buttonText = computed(() => {
     const block = this.currentBlock();
     const isStrengthWithMoreRounds =
-      block.type === 'strength' &&
-      block.rounds &&
-      this.currentRound() < block.rounds;
+      block.type === 'strength' && block.rounds && this.currentRound() < block.rounds;
     const isLastBlock = this.currentBlockIndex() === this.blocks().length - 1;
 
     if (isStrengthWithMoreRounds) {
@@ -148,13 +146,33 @@ export class WorkoutActiveComponent implements OnDestroy {
         }
       }
     });
+
+    if (isPlatformBrowser(this.platformId)) {
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
   }
 
   private startTimer(): void {
     this.stopTimer();
+    this.lastTickMs = Date.now();
     this.timerInterval = setInterval(() => {
-      this.workoutStateService.incrementTime();
+      this.applyElapsedDelta();
     }, 1000);
+  }
+
+  private applyElapsedDelta(): void {
+    if (this.lastTickMs === null) {
+      this.lastTickMs = Date.now();
+      return;
+    }
+    const now = Date.now();
+    const diffMs = now - this.lastTickMs;
+    const diffSeconds = Math.floor(diffMs / 1000);
+
+    if (diffSeconds > 0) {
+      this.workoutStateService.addElapsed(diffSeconds);
+      this.lastTickMs += diffSeconds * 1000;
+    }
   }
 
   private stopTimer(): void {
@@ -162,6 +180,7 @@ export class WorkoutActiveComponent implements OnDestroy {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+    this.lastTickMs = null;
   }
 
   completeBlock(): void {
@@ -177,5 +196,8 @@ export class WorkoutActiveComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopTimer();
+    if (isPlatformBrowser(this.platformId)) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
   }
 }
