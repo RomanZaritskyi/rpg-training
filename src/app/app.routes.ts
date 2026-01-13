@@ -30,6 +30,13 @@ export const routes: Routes = [
             (m) => m.WorkoutFinishComponent
           ),
       },
+      {
+        path: 'failed',
+        loadComponent: () =>
+          import('./features/workout/components/workout-failed/workout-failed.component').then(
+            (m) => m.WorkoutFailedComponent
+          ),
+      },
     ],
   },
   {
